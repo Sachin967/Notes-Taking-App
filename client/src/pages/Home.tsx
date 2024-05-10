@@ -45,6 +45,17 @@ const Home: React.FC = () => {
           }
      }
 
+     const onSearch=async(query:string)=>{
+          try {
+               const response = await notes.get(`/search-notes/${query}`)
+               if(response.data){
+                    setAllNotes(response.data)
+               }
+          } catch (error) {
+               console.log(error)
+          }
+     }
+
      const getAllNotes = async () => {
           try {
                const response = await notes.get('/')
@@ -63,7 +74,7 @@ const Home: React.FC = () => {
 
      return (
           <>
-               <Navbar />
+               <Navbar onSearch={onSearch } />
                <div className="container mx-auto">
                     {allNotes.length > 0 ? (
                          <div className="grid grid-cols-3 gap-4 mt-8">

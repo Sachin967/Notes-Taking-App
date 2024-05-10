@@ -11,4 +11,5 @@ notesRouter.get('/:id', notesController_1.getNote);
 notesRouter.post('/', notesController_1.createNote);
 notesRouter.put('/:id', notesController_1.updateNote);
 notesRouter.delete('/:id', notesController_1.deleteNote);
+notesRouter.get('/search-notes/:query', notesController_1.searchNotes);
 exports.default = notesRouter;

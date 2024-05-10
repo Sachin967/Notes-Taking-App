@@ -36,9 +36,5 @@ const protect = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
             throw new Error('Invalid token');
         }
     }
-    else {
-        res.status(401);
-        throw new Error('Unauthorized user');
-    }
 });
 exports.protect = protect;

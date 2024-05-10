@@ -79,4 +79,27 @@ const deleteNote = async (req: Request, res: Response): Promise<void> => {
      }
 }
 
-export { getAllNotes, createNote, getNote, updateNote, deleteNote }
+const searchNotes = async (req: Request, res: Response): Promise<void> => {
+     try {
+          console.log(req.params)
+          const { query } = req.params
+          if (!query) {
+               res.status(400).json({ error: 'Query parameter is missing' })
+               return
+          }
+
+          const searchQuery = `
+            SELECT * 
+            FROM notes 
+            WHERE title ILIKE $1 OR content ILIKE $1`
+          const searchValue = [`%${query}%`]
+          const searchResult = await pool.query(searchQuery, searchValue)
+
+          res.json(searchResult.rows)
+     } catch (error) {
+          console.error('Error searching notes:', error)
+          res.status(500).json({ error: 'Internal server error' })
+     }
+}
+
+export { getAllNotes, createNote, getNote, updateNote, deleteNote, searchNotes }

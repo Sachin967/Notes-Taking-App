@@ -62,6 +62,7 @@ const AddEditNotesModal: React.FC<AddEditNotesModalProps> = ({ isOpen, onClose, 
                getAllNotes()
                onClose()
           } catch (error: any) {
+               console.log(error)
                setError(error.message)
           }
      }

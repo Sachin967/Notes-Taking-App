@@ -6,7 +6,6 @@ export interface CustomRequest extends Request {
 }
 const protect = async (req: CustomRequest, res: Response, next: NextFunction) => {
      const token = req.cookies.jwt
-
      if (token) {
           try {
                const decoded: any = jwt.verify(token, process.env.JWT_SECRET!)
@@ -23,10 +22,7 @@ const protect = async (req: CustomRequest, res: Response, next: NextFunction) =>
                res.status(401)
                throw new Error('Invalid token')
           }
-     } else {
-          res.status(401)
-          throw new Error('Unauthorized user')
-     }
+     } 
 }
 
 export { protect }

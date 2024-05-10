@@ -9,6 +9,7 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 require("dotenv/config");
 const notesRoutes_1 = __importDefault(require("./routes/notesRoutes"));
+const middleware_1 = require("./services/middleware");
 const app = (0, express_1.default)();
 const port = process.env.PORT;
 app.use(express_1.default.json());
@@ -20,7 +21,7 @@ const corsOptions = {
 };
 app.use((0, cors_1.default)(corsOptions));
 app.use('/users', userRoutes_1.default);
-app.use('/notes', notesRoutes_1.default);
+app.use('/notes', middleware_1.protect, notesRoutes_1.default);
 app.listen(port, () => {
     console.log(`server is running on ${port}`);
 });

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteNote = exports.updateNote = exports.getNote = exports.createNote = exports.getAllNotes = void 0;
+exports.searchNotes = exports.deleteNote = exports.updateNote = exports.getNote = exports.createNote = exports.getAllNotes = void 0;
 const database_1 = require("../services/database");
 const getAllNotes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -22,7 +22,8 @@ const getAllNotes = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.getAllNotes = getAllNotes;
 const createNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { userId, title, content } = req.body;
+    const { userId } = req.user;
+    const { title, content } = req.body;
     try {
         const insertNotesQuery = `
       INSERT INTO notes (userid, title, content)
@@ -55,9 +56,6 @@ const getNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.getNote = getNote;
 const updateNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log(req.params);
-    console.log(req.query);
-    console.log(req);
     const { id } = req.params;
     const { title, content } = req.body;
     try {
@@ -98,3 +96,25 @@ const deleteNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.deleteNote = deleteNote;
+const searchNotes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log(req.params);
+        const { query } = req.params;
+        if (!query) {
+            res.status(400).json({ error: 'Query parameter is missing' });
+            return;
+        }
+        const searchQuery = `
+            SELECT * 
+            FROM notes 
+            WHERE title ILIKE $1 OR content ILIKE $1`;
+        const searchValue = [`%${query}%`];
+        const searchResult = yield database_1.pool.query(searchQuery, searchValue);
+        res.json(searchResult.rows);
+    }
+    catch (error) {
+        console.error('Error searching notes:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+exports.searchNotes = searchNotes;

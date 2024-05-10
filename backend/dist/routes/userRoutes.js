@@ -10,4 +10,5 @@ userRouter.post('/register', userController_1.registerUser);
 userRouter.post('/login', userController_1.authUser);
 userRouter.post('/verify', userController_1.VerifyOtp);
 userRouter.post('/signout', userController_1.logOut);
+userRouter.post('/resendotp', userController_1.resendOtp);
 exports.default = userRouter;

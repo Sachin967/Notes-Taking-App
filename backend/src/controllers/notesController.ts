@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { pool } from '../services/database'
+import { CustomRequest } from '../services/middleware'
 
 const getAllNotes = async (req: Request, res: Response): Promise<void> => {
      try {
@@ -10,8 +11,9 @@ const getAllNotes = async (req: Request, res: Response): Promise<void> => {
      }
 }
 
-const createNote = async (req: Request, res: Response): Promise<void> => {
-     const { userId, title, content } = req.body
+const createNote = async (req: CustomRequest, res: Response): Promise<void> => {
+     const { userId } = req.user
+     const { title, content } = req.body
      try {
           const insertNotesQuery = `
       INSERT INTO notes (userid, title, content)
@@ -41,9 +43,6 @@ const getNote = async (req: Request, res: Response): Promise<void> => {
 }
 
 const updateNote = async (req: Request, res: Response): Promise<void> => {
-  console.log(req.params)
-  console.log(req.query)
-  console.log(req)
      const { id } = req.params
      const { title, content } = req.body
      try {
@@ -81,5 +80,3 @@ const deleteNote = async (req: Request, res: Response): Promise<void> => {
 }
 
 export { getAllNotes, createNote, getNote, updateNote, deleteNote }
-
-

@@ -7,7 +7,7 @@ import {
      sendOTP,
      generateToken,
      validatePassword,
-} from '../services/utils' 
+} from '../services/utils'
 
 interface RegisterUserRequest extends Request {
      body: {
@@ -135,7 +135,7 @@ const authUser = async (req: LoginUserRequest, res: Response, next: NextFunction
                return
           }
 
-          await generateToken(res, user.id) 
+          await generateToken(res, user.id)
 
           res.json({
                name: user.name,
@@ -160,4 +160,27 @@ const logOut = async (req: Request, res: Response) => {
      }
 }
 
-export { registerUser, VerifyOtp, authUser,logOut }
+const resendOtp = async (req: Request, res: Response): Promise<void> => {
+     try {
+          const { id } = req.body
+          const otp = generateOTP()
+
+          const updateQuery = 'UPDATE users SET otp = $1 WHERE id = $2 RETURNING *'
+          const updateValues = [otp, id]
+          const { rows } = await pool.query(updateQuery, updateValues)
+
+          if (rows.length === 0) {
+               res.status(404).json({ message: 'User not found' })
+               return
+          }
+
+          const updatedUser = rows[0]
+          const otpResponse = await sendOTP(updatedUser.email, otp)
+          res.json(otpResponse)
+     } catch (error) {
+          console.error(error)
+          res.status(500).json({ message: 'Internal Server Error' })
+     }
+}
+
+export { registerUser, VerifyOtp, authUser, logOut, resendOtp }

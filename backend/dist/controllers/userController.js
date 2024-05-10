@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logOut = exports.authUser = exports.VerifyOtp = exports.registerUser = void 0;
+exports.resendOtp = exports.logOut = exports.authUser = exports.VerifyOtp = exports.registerUser = void 0;
 const database_1 = require("../services/database");
 const utils_1 = require("../services/utils");
 const registerUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
@@ -127,3 +127,24 @@ const logOut = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.logOut = logOut;
+const resendOtp = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.body;
+        const otp = (0, utils_1.generateOTP)();
+        const updateQuery = 'UPDATE users SET otp = $1 WHERE id = $2 RETURNING *';
+        const updateValues = [otp, id];
+        const { rows } = yield database_1.pool.query(updateQuery, updateValues);
+        if (rows.length === 0) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+        const updatedUser = rows[0];
+        const otpResponse = yield (0, utils_1.sendOTP)(updatedUser.email, otp);
+        res.json(otpResponse);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+exports.resendOtp = resendOtp;

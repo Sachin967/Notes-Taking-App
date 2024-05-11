@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios'
 
-const user = 'http://localhost:3500/users'
-const note = 'http://localhost:3500/notes'
+const user = 'https://notesbackend.sachinms.fyi/users'
+const note = 'https://notesbackend.sachinms.fyi/notes'
 
 function createAxiosInstance(baseURL: string, withCredentials: boolean = false): AxiosInstance {
      return axios.create({

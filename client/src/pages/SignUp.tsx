@@ -84,12 +84,12 @@ const SignUp: React.FC = () => {
                try {
                     const response = await users.post('/register', formstate, { withCredentials: true })
                     console.log(response.status)
-                    const { Id } = response.data
                     if (response.status === 200) {
                          console.log(response)
-                         Navigate(`/verifyemail/${Id}`)
+                        toast.success('Email verification link has been send to your email')
                     }
-               } catch (err) {
+               } catch (err:any) {
+                    toast.error(err.message)
                     console.log(err)
                }
           } else {

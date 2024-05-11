@@ -13,7 +13,8 @@ exports.searchNotes = exports.deleteNote = exports.updateNote = exports.getNote 
 const database_1 = require("../services/database");
 const getAllNotes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const result = yield database_1.pool.query('SELECT * FROM notes');
+        const { id } = req.user;
+        const result = yield database_1.pool.query('SELECT * FROM notes WHERE userid = $1', [id]);
         res.status(200).json(result.rows);
     }
     catch (error) {
@@ -22,14 +23,14 @@ const getAllNotes = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.getAllNotes = getAllNotes;
 const createNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { userId } = req.user;
+    const { id } = req.user;
     const { title, content } = req.body;
     try {
         const insertNotesQuery = `
       INSERT INTO notes (userid, title, content)
       VALUES ($1, $2, $3)
       RETURNING id`;
-        const insertNotesValues = [userId, title, content];
+        const insertNotesValues = [id, title, content];
         yield database_1.pool.query(insertNotesQuery, insertNotesValues);
         res.status(201).json({ message: 'Note created' });
     }
@@ -66,10 +67,10 @@ const updateNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         const updateNoteValues = [title, content, id];
         const result = yield database_1.pool.query(updateNoteQuery, updateNoteValues);
         if (result.rowCount === 0) {
-            res.status(404).json({ message: `Note with id ${id} not found` });
+            res.status(404).json({ message: `Note not found` });
         }
         else {
-            res.status(200).json({ message: `Note with id ${id} updated successfully` });
+            res.status(200).json({ message: `Note updated successfully` });
         }
     }
     catch (error) {
@@ -85,10 +86,10 @@ const deleteNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
       WHERE id = $1`;
         const result = yield database_1.pool.query(deleteNoteQuery, [id]);
         if (result.rowCount === 0) {
-            res.status(404).json({ message: `Note with id ${id} not found` });
+            res.status(404).json({ message: `Note not found` });
         }
         else {
-            res.status(200).json({ message: `Note with id ${id} deleted successfully` });
+            res.status(200).json({ message: `Note deleted successfully` });
         }
     }
     catch (error) {
@@ -98,7 +99,6 @@ const deleteNote = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 exports.deleteNote = deleteNote;
 const searchNotes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        console.log(req.params);
         const { query } = req.params;
         if (!query) {
             res.status(400).json({ error: 'Query parameter is missing' });

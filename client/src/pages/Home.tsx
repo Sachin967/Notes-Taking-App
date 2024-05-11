@@ -74,7 +74,7 @@ const Home: React.FC = () => {
 
      return (
           <>
-               <Navbar onSearch={onSearch } />
+               <Navbar onSearch={onSearch} />
                <div className="container mx-auto">
                     {allNotes.length > 0 ? (
                          <div className="grid grid-cols-3 gap-4 mt-8">
@@ -101,7 +101,8 @@ const Home: React.FC = () => {
                     )}
                </div>
                <button
-                    className="w-16 h-16 flex items-center justify-center rounded-2xl bg-blue-500 hover:bg-blue-600 absolute right-10 bottom-[-250px]"
+                    style={{ bottom: allNotes.length > 0 ? '-460px' : '-250px' }}
+                    className="w-16 h-16 flex items-center justify-center rounded-2xl bg-blue-500 hover:bg-blue-600 absolute right-10"
                     onClick={() => {
                          onOpen()
                          setEditAddModal({ type: 'add', data: {} })

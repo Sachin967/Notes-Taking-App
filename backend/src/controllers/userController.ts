@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import crypto from 'crypto'
 import { pool } from '../services/database'
 import {
      generateSalt,
@@ -7,6 +8,7 @@ import {
      sendOTP,
      generateToken,
      validatePassword,
+     verifyToken,
 } from '../services/utils'
 
 interface RegisterUserRequest extends Request {
@@ -16,12 +18,7 @@ interface RegisterUserRequest extends Request {
           password: string
      }
 }
-interface VerifyOTPRequest extends Request {
-     body: {
-          otp: string
-          id: string
-     }
-}
+
 interface LoginUserRequest extends Request {
      body: {
           email: string
@@ -44,16 +41,20 @@ const registerUser = async (req: RegisterUserRequest, res: Response, next: NextF
                throw new Error('User already exists')
           }
 
+          const token = crypto.randomBytes(20).toString('hex')
+          const expirationTime = new Date()
+          expirationTime.setHours(expirationTime.getHours() + 1)
+
           const insertUserQuery = `
-            INSERT INTO users (name, email, password, otp, salt)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO users (name, email, password, otp, salt,verify_token,expiry_timestamp)
+            VALUES ($1, $2, $3, $4, $5,$6,$7)
             RETURNING id`
-          const insertUserValues = [name, email, userPassword, otp, salt]
+          const insertUserValues = [name, email, userPassword, otp, salt, token, expirationTime]
           const userResult = await pool.query(insertUserQuery, insertUserValues)
 
           const userId = userResult.rows[0].id
 
-          const otpResponse = await sendOTP(email, otp)
+          const otpResponse = await sendOTP(email, token, userId)
 
           await generateToken(res, userId)
           const response = {
@@ -68,14 +69,17 @@ const registerUser = async (req: RegisterUserRequest, res: Response, next: NextF
      }
 }
 
-const VerifyOtp = async (req: VerifyOTPRequest, res: Response, next: NextFunction) => {
-     const { otp, id } = req.body
-
+const verifyTokenExpirationAndUpdateUser = async (req: Request, res: Response, next: NextFunction) => {
+     const { id, token } = req.params
      try {
+          const tokenNotExpired = await verifyToken(id, token)
+          if (!tokenNotExpired) {
+               res.status(400).json({ status: false, message: 'Token is expired' })
+               return
+          }
           const fetchUserQuery = 'SELECT * FROM users WHERE id = $1'
           const fetchUserValues = [id]
           const fetchUserResult = await pool.query(fetchUserQuery, fetchUserValues)
-
           const user = fetchUserResult.rows[0]
 
           if (!user) {
@@ -83,27 +87,23 @@ const VerifyOtp = async (req: VerifyOTPRequest, res: Response, next: NextFunctio
                return
           }
 
-          if (otp === user.otp) {
-               const updateQuery = 'UPDATE users SET verified = $1 WHERE id = $2 RETURNING *'
-               const updateValues = [true, id]
-               const updateResult = await pool.query(updateQuery, updateValues)
+          const updateQuery = 'UPDATE users SET verified = $1 WHERE id = $2 RETURNING *'
+          const updateValues = [true, id]
+          const updateResult = await pool.query(updateQuery, updateValues)
+          const updatedUser = updateResult.rows[0]
 
-               const updatedUser = updateResult.rows[0]
-
-               if (!updatedUser) {
-                    res.status(500).json({ status: false, message: 'Failed to update user' })
-                    return
-               }
-
-               res.json({
-                    name: updatedUser.name,
-                    email: updatedUser.email,
-               })
-          } else {
-               res.status(400).json({ status: false, message: 'Invalid OTP' })
+          if (!updatedUser) {
+               res.status(500).json({ status: false, message: 'Failed to update user' })
+               return
           }
+
+          res.json({
+               name: updatedUser.name,
+               email: updatedUser.email,
+               verified: updatedUser.verified,
+          })
      } catch (error) {
-          console.log(error)
+          console.error(error)
           next(error)
      }
 }
@@ -160,27 +160,4 @@ const logOut = async (req: Request, res: Response) => {
      }
 }
 
-const resendOtp = async (req: Request, res: Response): Promise<void> => {
-     try {
-          const { id } = req.body
-          const otp = generateOTP()
-
-          const updateQuery = 'UPDATE users SET otp = $1 WHERE id = $2 RETURNING *'
-          const updateValues = [otp, id]
-          const { rows } = await pool.query(updateQuery, updateValues)
-
-          if (rows.length === 0) {
-               res.status(404).json({ message: 'User not found' })
-               return
-          }
-
-          const updatedUser = rows[0]
-          const otpResponse = await sendOTP(updatedUser.email, otp)
-          res.json(otpResponse)
-     } catch (error) {
-          console.error(error)
-          res.status(500).json({ message: 'Internal Server Error' })
-     }
-}
-
-export { registerUser, VerifyOtp, authUser, logOut, resendOtp }
+export { registerUser, verifyTokenExpirationAndUpdateUser, authUser, logOut }

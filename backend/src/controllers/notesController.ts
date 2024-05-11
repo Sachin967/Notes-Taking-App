@@ -2,9 +2,10 @@ import { Request, Response } from 'express'
 import { pool } from '../services/database'
 import { CustomRequest } from '../services/middleware'
 
-const getAllNotes = async (req: Request, res: Response): Promise<void> => {
+const getAllNotes = async (req: CustomRequest, res: Response): Promise<void> => {
      try {
-          const result = await pool.query('SELECT * FROM notes')
+          const { id } = req.user
+          const result = await pool.query('SELECT * FROM notes WHERE userid = $1', [id])
           res.status(200).json(result.rows)
      } catch (error) {
           res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error occurred' })
@@ -12,14 +13,14 @@ const getAllNotes = async (req: Request, res: Response): Promise<void> => {
 }
 
 const createNote = async (req: CustomRequest, res: Response): Promise<void> => {
-     const { userId } = req.user
+     const { id } = req.user
      const { title, content } = req.body
      try {
           const insertNotesQuery = `
       INSERT INTO notes (userid, title, content)
       VALUES ($1, $2, $3)
       RETURNING id`
-          const insertNotesValues = [userId, title, content]
+          const insertNotesValues = [id, title, content]
           await pool.query(insertNotesQuery, insertNotesValues)
           res.status(201).json({ message: 'Note created' })
      } catch (error) {
@@ -53,9 +54,9 @@ const updateNote = async (req: Request, res: Response): Promise<void> => {
           const updateNoteValues = [title, content, id]
           const result = await pool.query(updateNoteQuery, updateNoteValues)
           if (result.rowCount === 0) {
-               res.status(404).json({ message: `Note with id ${id} not found` })
+               res.status(404).json({ message: `Note not found` })
           } else {
-               res.status(200).json({ message: `Note with id ${id} updated successfully` })
+               res.status(200).json({ message: `Note updated successfully` })
           }
      } catch (error) {
           res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error occurred' })
@@ -70,9 +71,9 @@ const deleteNote = async (req: Request, res: Response): Promise<void> => {
       WHERE id = $1`
           const result = await pool.query(deleteNoteQuery, [id])
           if (result.rowCount === 0) {
-               res.status(404).json({ message: `Note with id ${id} not found` })
+               res.status(404).json({ message: `Note not found` })
           } else {
-               res.status(200).json({ message: `Note with id ${id} deleted successfully` })
+               res.status(200).json({ message: `Note deleted successfully` })
           }
      } catch (error) {
           res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error occurred' })
@@ -81,7 +82,6 @@ const deleteNote = async (req: Request, res: Response): Promise<void> => {
 
 const searchNotes = async (req: Request, res: Response): Promise<void> => {
      try {
-          console.log(req.params)
           const { query } = req.params
           if (!query) {
                res.status(400).json({ error: 'Query parameter is missing' })

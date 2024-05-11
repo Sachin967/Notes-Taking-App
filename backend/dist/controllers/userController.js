@@ -8,8 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resendOtp = exports.logOut = exports.authUser = exports.VerifyOtp = exports.registerUser = void 0;
+exports.logOut = exports.authUser = exports.verifyTokenExpirationAndUpdateUser = exports.registerUser = void 0;
+const crypto_1 = __importDefault(require("crypto"));
 const database_1 = require("../services/database");
 const utils_1 = require("../services/utils");
 const registerUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
@@ -24,14 +28,17 @@ const registerUser = (req, res, next) => __awaiter(void 0, void 0, void 0, funct
             res.status(400);
             throw new Error('User already exists');
         }
+        const token = crypto_1.default.randomBytes(20).toString('hex');
+        const expirationTime = new Date();
+        expirationTime.setHours(expirationTime.getHours() + 1);
         const insertUserQuery = `
-            INSERT INTO users (name, email, password, otp, salt)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO users (name, email, password, otp, salt,verify_token,expiry_timestamp)
+            VALUES ($1, $2, $3, $4, $5,$6,$7)
             RETURNING id`;
-        const insertUserValues = [name, email, userPassword, otp, salt];
+        const insertUserValues = [name, email, userPassword, otp, salt, token, expirationTime];
         const userResult = yield database_1.pool.query(insertUserQuery, insertUserValues);
         const userId = userResult.rows[0].id;
-        const otpResponse = yield (0, utils_1.sendOTP)(email, otp);
+        const otpResponse = yield (0, utils_1.sendOTP)(email, token, userId);
         yield (0, utils_1.generateToken)(res, userId);
         const response = {
             Id: userId,
@@ -45,9 +52,14 @@ const registerUser = (req, res, next) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.registerUser = registerUser;
-const VerifyOtp = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { otp, id } = req.body;
+const verifyTokenExpirationAndUpdateUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id, token } = req.params;
     try {
+        const tokenNotExpired = yield (0, utils_1.verifyToken)(id, token);
+        if (!tokenNotExpired) {
+            res.status(400).json({ status: false, message: 'Token is expired' });
+            return;
+        }
         const fetchUserQuery = 'SELECT * FROM users WHERE id = $1';
         const fetchUserValues = [id];
         const fetchUserResult = yield database_1.pool.query(fetchUserQuery, fetchUserValues);
@@ -56,30 +68,26 @@ const VerifyOtp = (req, res, next) => __awaiter(void 0, void 0, void 0, function
             res.status(404).json({ status: false, message: 'User not found' });
             return;
         }
-        if (otp === user.otp) {
-            const updateQuery = 'UPDATE users SET verified = $1 WHERE id = $2 RETURNING *';
-            const updateValues = [true, id];
-            const updateResult = yield database_1.pool.query(updateQuery, updateValues);
-            const updatedUser = updateResult.rows[0];
-            if (!updatedUser) {
-                res.status(500).json({ status: false, message: 'Failed to update user' });
-                return;
-            }
-            res.json({
-                name: updatedUser.name,
-                email: updatedUser.email,
-            });
+        const updateQuery = 'UPDATE users SET verified = $1 WHERE id = $2 RETURNING *';
+        const updateValues = [true, id];
+        const updateResult = yield database_1.pool.query(updateQuery, updateValues);
+        const updatedUser = updateResult.rows[0];
+        if (!updatedUser) {
+            res.status(500).json({ status: false, message: 'Failed to update user' });
+            return;
         }
-        else {
-            res.status(400).json({ status: false, message: 'Invalid OTP' });
-        }
+        res.json({
+            name: updatedUser.name,
+            email: updatedUser.email,
+            verified: updatedUser.verified,
+        });
     }
     catch (error) {
-        console.log(error);
+        console.error(error);
         next(error);
     }
 });
-exports.VerifyOtp = VerifyOtp;
+exports.verifyTokenExpirationAndUpdateUser = verifyTokenExpirationAndUpdateUser;
 const authUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, password } = req.body;
     try {
@@ -127,24 +135,3 @@ const logOut = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.logOut = logOut;
-const resendOtp = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { id } = req.body;
-        const otp = (0, utils_1.generateOTP)();
-        const updateQuery = 'UPDATE users SET otp = $1 WHERE id = $2 RETURNING *';
-        const updateValues = [otp, id];
-        const { rows } = yield database_1.pool.query(updateQuery, updateValues);
-        if (rows.length === 0) {
-            res.status(404).json({ message: 'User not found' });
-            return;
-        }
-        const updatedUser = rows[0];
-        const otpResponse = yield (0, utils_1.sendOTP)(updatedUser.email, otp);
-        res.json(otpResponse);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
-exports.resendOtp = resendOtp;

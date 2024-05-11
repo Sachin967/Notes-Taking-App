@@ -12,7 +12,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
 const corsOptions = {
-     origin: 'http://localhost:5173',
+     origin: ['https://note.sachinms.fyi','http://localhost:5173'],
      credentials: true,
 }
 app.use(cors(corsOptions))
